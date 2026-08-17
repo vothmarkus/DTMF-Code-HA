@@ -27,6 +27,7 @@ def test_manifest_and_hacs_metadata():
     assert manifest["integration_type"] == "helper"
     assert manifest["iot_class"] == "local_push"
     assert hacs["name"] == manifest["name"]
+    assert (INTEGRATION / "brand" / "icon.png").is_file()
 
 
 def test_translation_files_and_strings_have_identical_keys():
