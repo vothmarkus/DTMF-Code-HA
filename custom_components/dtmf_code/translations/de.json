@@ -1,0 +1,131 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "DTMF-Code einrichten",
+        "description": "Wähle das Reolink SIP Gateway, dessen flüchtige DTMF-Ereignisse geprüft werden sollen. Anschließend öffnet sich automatisch die Einrichtung des ersten Codeprofils.",
+        "data": {
+          "gateway_entry_id": "Reolink SIP Gateway",
+          "submit_key": "Bestätigungstaste",
+          "clear_key": "Löschtaste",
+          "input_timeout": "Eingabezeitlimit",
+          "max_attempts": "Fehlversuche bis zur Sperre",
+          "lockout_seconds": "Sperrdauer"
+        }
+      },
+      "reconfigure": {
+        "title": "Tastaturverhalten ändern",
+        "description": "Diese Einstellungen gelten für alle Codeprofile dieses Gateways.",
+        "data": {
+          "submit_key": "Bestätigungstaste",
+          "clear_key": "Löschtaste",
+          "input_timeout": "Eingabezeitlimit",
+          "max_attempts": "Fehlversuche bis zur Sperre",
+          "lockout_seconds": "Sperrdauer"
+        }
+      }
+    },
+    "error": {
+      "control_keys_equal": "Bestätigungs- und Löschtaste müssen verschieden sein.",
+      "gateway_not_found": "Das gewählte Reolink SIP Gateway ist nicht mehr vorhanden."
+    },
+    "abort": {
+      "already_configured": "DTMF-Code ist für dieses Gateway bereits eingerichtet.",
+      "no_gateways": "Richte zuerst Reolink SIP Gateway 1.0.0 oder neuer ein.",
+      "reconfigure_successful": "Die gemeinsamen Tastatureinstellungen wurden aktualisiert."
+    }
+  },
+  "config_subentries": {
+    "code": {
+      "entry_type": "Codeprofil",
+      "initiate_flow": {
+        "reconfigure": "Codeprofil neu konfigurieren",
+        "user": "Codeprofil hinzufügen"
+      },
+      "title": "Codeprofil",
+      "step": {
+        "user": {
+          "title": "Codeprofil hinzufügen",
+          "description": "Der Zahlencode muss aus {min_length} bis {max_length} Ziffern bestehen. Rufnummern werden nach der Normalisierung exakt verglichen.",
+          "data": {
+            "name": "Profilname",
+            "code": "Zugangscode",
+            "code_confirm": "Zugangscode bestätigen",
+            "number_mode": "Zugelassene Gegenstellen",
+            "allowed_numbers": "Rufnummernfreigabe",
+            "call_directions": "Zugelassene Anrufrichtungen"
+          }
+        },
+        "reconfigure": {
+          "title": "Codeprofil ändern",
+          "description": "Lasse beide Codefelder leer, um den bisherigen Code beizubehalten. Ein neuer Code muss aus {min_length} bis {max_length} Ziffern bestehen.",
+          "data": {
+            "name": "Profilname",
+            "code": "Neuer Zugangscode (optional)",
+            "code_confirm": "Neuen Zugangscode bestätigen",
+            "number_mode": "Zugelassene Gegenstellen",
+            "allowed_numbers": "Rufnummernfreigabe",
+            "call_directions": "Zugelassene Anrufrichtungen"
+          }
+        }
+      },
+      "error": {
+        "code_mismatch": "Die beiden Codeeingaben stimmen nicht überein.",
+        "directions_required": "Wähle mindestens eine gültige Anrufrichtung.",
+        "duplicate_code": "Dieser Zugangscode ist bereits einem anderen Profil zugeordnet.",
+        "duplicate_name": "Ein anderes Profil verwendet bereits diesen Namen.",
+        "invalid_code": "Gib einen Zahlencode mit der erforderlichen Länge ein.",
+        "invalid_name": "Gib einen Profilnamen mit höchstens 64 Zeichen ein.",
+        "invalid_number": "Eine der Rufnummern ist leer oder ungültig.",
+        "invalid_number_mode": "Wähle eine gültige Rufnummernregel.",
+        "numbers_required": "Füge mindestens eine Rufnummer hinzu oder erlaube ausdrücklich alle Gegenstellen."
+      },
+      "abort": {
+        "reconfigure_successful": "Das Codeprofil wurde aktualisiert."
+      }
+    }
+  },
+  "selector": {
+    "number_mode": {
+      "options": {
+        "allow_all": "Alle Gegenstellen erlauben",
+        "allow_list": "Nur eingetragene Rufnummern erlauben"
+      }
+    },
+    "call_direction": {
+      "options": {
+        "incoming": "Eingehende Anrufe",
+        "outgoing": "Ausgehende Anrufe"
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "code": {
+        "name": "{name}",
+        "state_attributes": {
+          "event_type": {"state": {"accepted": "Code akzeptiert"}},
+          "instance_id": {"name": "Gateway-Installations-ID"},
+          "call_id": {"name": "SIP-Anruf-ID"},
+          "call_direction": {"name": "Anrufrichtung"},
+          "remote_number": {"name": "Rufnummer der Gegenstelle"},
+          "received_at": {"name": "Empfangen um"},
+          "profile_id": {"name": "Codeprofil-ID"},
+          "profile_name": {"name": "Codeprofilname"}
+        }
+      },
+      "security": {
+        "name": "Sicherheit",
+        "state_attributes": {
+          "event_type": {"state": {"rejected": "Code abgelehnt", "locked_out": "Gegenstelle vorübergehend gesperrt"}},
+          "instance_id": {"name": "Gateway-Installations-ID"},
+          "call_id": {"name": "SIP-Anruf-ID"},
+          "call_direction": {"name": "Anrufrichtung"},
+          "remote_number": {"name": "Rufnummer der Gegenstelle"},
+          "received_at": {"name": "Empfangen um"},
+          "lockout_seconds": {"name": "Sperrdauer (Sekunden)"}
+        }
+      }
+    }
+  }
+}

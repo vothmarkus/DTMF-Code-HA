@@ -1,0 +1,131 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up DTMF Code",
+        "description": "Select the Reolink SIP Gateway whose transient DTMF events should be validated. After this step, the first code profile opens automatically.",
+        "data": {
+          "gateway_entry_id": "Reolink SIP Gateway",
+          "submit_key": "Submit key",
+          "clear_key": "Clear key",
+          "input_timeout": "Input timeout",
+          "max_attempts": "Failed attempts before lockout",
+          "lockout_seconds": "Lockout duration"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure keypad behavior",
+        "description": "These settings apply to every code profile of this gateway.",
+        "data": {
+          "submit_key": "Submit key",
+          "clear_key": "Clear key",
+          "input_timeout": "Input timeout",
+          "max_attempts": "Failed attempts before lockout",
+          "lockout_seconds": "Lockout duration"
+        }
+      }
+    },
+    "error": {
+      "control_keys_equal": "Submit and clear keys must be different.",
+      "gateway_not_found": "The selected Reolink SIP Gateway no longer exists."
+    },
+    "abort": {
+      "already_configured": "DTMF Code is already configured for this gateway.",
+      "no_gateways": "Set up Reolink SIP Gateway 1.0.0 or newer before adding DTMF Code.",
+      "reconfigure_successful": "The shared keypad settings were updated."
+    }
+  },
+  "config_subentries": {
+    "code": {
+      "entry_type": "Code profile",
+      "initiate_flow": {
+        "reconfigure": "Reconfigure code profile",
+        "user": "Add code profile"
+      },
+      "title": "Code profile",
+      "step": {
+        "user": {
+          "title": "Add code profile",
+          "description": "The numeric code must contain {min_length} to {max_length} digits. A number allowlist uses exact normalized matches.",
+          "data": {
+            "name": "Profile name",
+            "code": "Access code",
+            "code_confirm": "Confirm access code",
+            "number_mode": "Allowed remote numbers",
+            "allowed_numbers": "Number allowlist",
+            "call_directions": "Allowed call directions"
+          }
+        },
+        "reconfigure": {
+          "title": "Update code profile",
+          "description": "Leave both access-code fields empty to retain the current code. A new code must contain {min_length} to {max_length} digits.",
+          "data": {
+            "name": "Profile name",
+            "code": "New access code (optional)",
+            "code_confirm": "Confirm new access code",
+            "number_mode": "Allowed remote numbers",
+            "allowed_numbers": "Number allowlist",
+            "call_directions": "Allowed call directions"
+          }
+        }
+      },
+      "error": {
+        "code_mismatch": "The two access-code entries do not match.",
+        "directions_required": "Select at least one valid call direction.",
+        "duplicate_code": "This access code is already assigned to another profile.",
+        "duplicate_name": "Another profile already uses this name.",
+        "invalid_code": "Enter a numeric access code with the required length.",
+        "invalid_name": "Enter a profile name of at most 64 characters.",
+        "invalid_number": "One of the remote numbers is empty or invalid.",
+        "invalid_number_mode": "Select a valid number policy.",
+        "numbers_required": "Add at least one number or explicitly allow all remote numbers."
+      },
+      "abort": {
+        "reconfigure_successful": "The code profile was updated."
+      }
+    }
+  },
+  "selector": {
+    "number_mode": {
+      "options": {
+        "allow_all": "Allow all remote numbers",
+        "allow_list": "Allow only listed remote numbers"
+      }
+    },
+    "call_direction": {
+      "options": {
+        "incoming": "Incoming calls",
+        "outgoing": "Outgoing calls"
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "code": {
+        "name": "{name}",
+        "state_attributes": {
+          "event_type": {"state": {"accepted": "Code accepted"}},
+          "instance_id": {"name": "Gateway installation ID"},
+          "call_id": {"name": "SIP call ID"},
+          "call_direction": {"name": "Call direction"},
+          "remote_number": {"name": "Remote number"},
+          "received_at": {"name": "Received at"},
+          "profile_id": {"name": "Code profile ID"},
+          "profile_name": {"name": "Code profile name"}
+        }
+      },
+      "security": {
+        "name": "Security",
+        "state_attributes": {
+          "event_type": {"state": {"rejected": "Code rejected", "locked_out": "Remote temporarily locked out"}},
+          "instance_id": {"name": "Gateway installation ID"},
+          "call_id": {"name": "SIP call ID"},
+          "call_direction": {"name": "Call direction"},
+          "remote_number": {"name": "Remote number"},
+          "received_at": {"name": "Received at"},
+          "lockout_seconds": {"name": "Lockout duration (seconds)"}
+        }
+      }
+    }
+  }
+}
