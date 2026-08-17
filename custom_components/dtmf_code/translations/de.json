@@ -1,5 +1,4 @@
 {
-  "title": "DTMF-Code",
   "config": {
     "step": {
       "user": {
@@ -38,6 +37,11 @@
   },
   "config_subentries": {
     "code": {
+      "entry_type": "Codeprofil",
+      "initiate_flow": {
+        "reconfigure": "Codeprofil neu konfigurieren",
+        "user": "Codeprofil hinzufügen"
+      },
       "title": "Codeprofil",
       "step": {
         "user": {
