@@ -69,7 +69,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Configure one shared DTMF collector and repeatable code profiles."""
 
     VERSION = 1
-    MINOR_VERSION = 3
+    MINOR_VERSION = 4
 
     def __init__(self) -> None:
         """Initialize one helper creation flow."""
@@ -104,6 +104,8 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._shared_settings = self._global_settings(user_input)
                 if self._collector_entry is None:
                     self._new_hash_salt = new_hash_salt()
+                else:
+                    self._update_existing_shared_settings(self._collector_entry)
                 return await self.async_step_code()
 
         defaults = user_input or self._initial_user_defaults(gateways)
@@ -144,7 +146,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             if error is None:
                 if collector is not None:
-                    self._update_existing_collector(collector, data, title)
+                    self._add_profile_to_existing_collector(collector, data, title)
                     return self.async_abort(
                         reason="code_profile_added",
                         description_placeholders={"name": title},
@@ -239,33 +241,29 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         defaults[CONF_GATEWAY_ENTRY_ID] = first_entry_id
         return defaults
 
-    def _update_existing_collector(
+    def _update_existing_shared_settings(self, collector: ConfigEntry) -> None:
+        """Persist changed shared settings before opening the profile page."""
+        if self._shared_settings is None:
+            raise RuntimeError("shared DTMF settings are not initialized")
+
+        updated_data = {**dict(collector.data), **self._shared_settings}
+        if updated_data != dict(collector.data):
+            self.hass.config_entries.async_update_entry(collector, data=updated_data)
+
+    def _add_profile_to_existing_collector(
         self,
         collector: ConfigEntry,
         profile_data: dict[str, Any],
         title: str,
     ) -> None:
-        """Atomically add a profile and update shared settings once."""
-        if self._shared_settings is None:
-            raise RuntimeError("shared DTMF settings are not initialized")
-
+        """Add one code profile through Home Assistant's public subentry API."""
         subentry = ConfigSubentry(
             data=MappingProxyType(profile_data),
             subentry_type=SUBENTRY_TYPE_CODE,
             title=title,
             unique_id=str(uuid4()),
         )
-        updated_subentries = dict(collector.subentries)
-        updated_subentries[subentry.subentry_id] = subentry
-        updated_data = {**dict(collector.data), **self._shared_settings}
-
-        # One config-entry update means one update-listener notification and one
-        # reload. The previous two-step update could schedule overlapping reloads.
-        self.hass.config_entries.async_update_entry(
-            collector,
-            data=updated_data,
-            subentries=updated_subentries,
-        )
+        self.hass.config_entries.async_add_subentry(collector, subentry)
 
     @staticmethod
     def _global_settings(user_input: dict[str, Any]) -> dict[str, str | int]:
