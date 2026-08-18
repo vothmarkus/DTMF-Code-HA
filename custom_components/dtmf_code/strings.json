@@ -48,13 +48,33 @@
       "invalid_name": "Enter a profile name of at most 64 characters.",
       "invalid_number": "One of the remote counterpart numbers is empty or invalid.",
       "invalid_number_mode": "Select a valid remote counterpart policy.",
-      "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts."
+      "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts.",
+      "stored_configuration_invalid": "The stored DTMF Code configuration is incomplete or incompatible. Check the Home Assistant log for the missing field before changing code profiles."
     },
     "abort": {
       "already_configured": "DTMF Code is already configured for this gateway.",
       "code_profile_added": "Code profile {name} was added to the existing DTMF Code helper.",
       "no_gateways": "Set up Reolink SIP Gateway 1.0.0 or newer before adding DTMF Code.",
-      "reconfigure_successful": "The shared keypad settings were updated."
+      "reconfigure_successful": "The shared keypad settings were updated.",
+      "stored_configuration_invalid": "The stored DTMF Code configuration is incomplete or incompatible. Check the Home Assistant log before changing code profiles."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DTMF Code settings",
+        "description": "These keypad and security settings apply to all code profiles of this gateway.",
+        "data": {
+          "submit_key": "Submit key",
+          "clear_key": "Clear key",
+          "input_timeout": "Input timeout",
+          "max_attempts": "Failed attempts before lockout",
+          "lockout_seconds": "Lockout duration"
+        }
+      }
+    },
+    "error": {
+      "control_keys_equal": "Submit and clear keys must be different."
     }
   },
   "config_subentries": {
@@ -100,10 +120,12 @@
         "invalid_name": "Enter a profile name of at most 64 characters.",
         "invalid_number": "One of the remote counterpart numbers is empty or invalid.",
         "invalid_number_mode": "Select a valid remote counterpart policy.",
-        "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts."
+        "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts.",
+        "stored_configuration_invalid": "The stored DTMF Code configuration is incomplete or incompatible. Check the Home Assistant log before changing code profiles."
       },
       "abort": {
-        "reconfigure_successful": "The code profile was updated."
+        "reconfigure_successful": "The code profile was updated.",
+        "stored_configuration_invalid": "The stored DTMF Code configuration is incomplete or incompatible. Check the Home Assistant log before changing code profiles."
       }
     }
   },
