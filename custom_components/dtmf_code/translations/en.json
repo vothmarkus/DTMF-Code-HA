@@ -2,15 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up DTMF Code",
-        "description": "Select the Reolink SIP Gateway whose transient DTMF events should be validated. After this step, the first code profile opens automatically.",
+        "title": "Select DTMF source",
+        "description": "Select the Reolink SIP Gateway whose DTMF events should be validated.",
         "data": {
-          "gateway_entry_id": "Reolink SIP Gateway",
+          "gateway_entry_id": "Reolink SIP Gateway"
+        }
+      },
+      "shared": {
+        "title": "DTMF keypad behavior",
+        "description": "These settings are shared by every code profile on this gateway. Creating another DTMF Code helper later reuses the same collector and can update these shared settings.",
+        "data": {
           "submit_key": "Submit key",
           "clear_key": "Clear key",
           "input_timeout": "Input timeout",
           "max_attempts": "Failed attempts before lockout",
           "lockout_seconds": "Lockout duration"
+        }
+      },
+      "code": {
+        "title": "Add code profile",
+        "description": "Create one code and its own Home Assistant event entity. The numeric code must contain {min_length} to {max_length} digits. The number rule always refers to the remote counterpart: the caller on incoming calls and the called destination on outgoing calls. Numbers are matched exactly after formatting normalization; country-code formats are not inferred.",
+        "data": {
+          "name": "Profile name",
+          "code": "Access code",
+          "code_confirm": "Confirm access code",
+          "number_mode": "Allowed remote counterparts",
+          "allowed_numbers": "Remote counterpart allowlist",
+          "call_directions": "Allowed call directions"
         }
       },
       "reconfigure": {
@@ -26,11 +44,20 @@
       }
     },
     "error": {
+      "code_mismatch": "The two access-code entries do not match.",
       "control_keys_equal": "Submit and clear keys must be different.",
-      "gateway_not_found": "The selected Reolink SIP Gateway no longer exists."
+      "directions_required": "Select at least one valid call direction.",
+      "duplicate_code": "This access code is already assigned to another profile.",
+      "duplicate_name": "Another profile already uses this name.",
+      "gateway_not_found": "The selected Reolink SIP Gateway no longer exists.",
+      "invalid_code": "Enter a numeric access code with the required length.",
+      "invalid_name": "Enter a profile name of at most 64 characters.",
+      "invalid_number": "One of the remote counterpart numbers is empty or invalid.",
+      "invalid_number_mode": "Select a valid remote counterpart policy.",
+      "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts."
     },
     "abort": {
-      "already_configured": "DTMF Code is already configured for this gateway.",
+      "code_profile_added": "The additional code profile was added to the existing DTMF collector.",
       "no_gateways": "Set up Reolink SIP Gateway 1.0.0 or newer before adding DTMF Code.",
       "reconfigure_successful": "The shared keypad settings were updated."
     }
@@ -46,25 +73,25 @@
       "step": {
         "user": {
           "title": "Add code profile",
-          "description": "The numeric code must contain {min_length} to {max_length} digits. A number allowlist uses exact normalized matches.",
+          "description": "The numeric code must contain {min_length} to {max_length} digits. The number rule always refers to the remote counterpart: the caller on incoming calls and the called destination on outgoing calls. Numbers are matched exactly after formatting normalization; country-code formats are not inferred.",
           "data": {
             "name": "Profile name",
             "code": "Access code",
             "code_confirm": "Confirm access code",
-            "number_mode": "Allowed remote numbers",
-            "allowed_numbers": "Number allowlist",
+            "number_mode": "Allowed remote counterparts",
+            "allowed_numbers": "Remote counterpart allowlist",
             "call_directions": "Allowed call directions"
           }
         },
         "reconfigure": {
           "title": "Update code profile",
-          "description": "Leave both access-code fields empty to retain the current code. A new code must contain {min_length} to {max_length} digits.",
+          "description": "Leave both access-code fields empty to retain the current code. A new code must contain {min_length} to {max_length} digits. The number rule always refers to the remote counterpart.",
           "data": {
             "name": "Profile name",
             "code": "New access code (optional)",
             "code_confirm": "Confirm new access code",
-            "number_mode": "Allowed remote numbers",
-            "allowed_numbers": "Number allowlist",
+            "number_mode": "Allowed remote counterparts",
+            "allowed_numbers": "Remote counterpart allowlist",
             "call_directions": "Allowed call directions"
           }
         }
@@ -76,9 +103,9 @@
         "duplicate_name": "Another profile already uses this name.",
         "invalid_code": "Enter a numeric access code with the required length.",
         "invalid_name": "Enter a profile name of at most 64 characters.",
-        "invalid_number": "One of the remote numbers is empty or invalid.",
-        "invalid_number_mode": "Select a valid number policy.",
-        "numbers_required": "Add at least one number or explicitly allow all remote numbers."
+        "invalid_number": "One of the remote counterpart numbers is empty or invalid.",
+        "invalid_number_mode": "Select a valid remote counterpart policy.",
+        "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts."
       },
       "abort": {
         "reconfigure_successful": "The code profile was updated."
@@ -88,8 +115,8 @@
   "selector": {
     "number_mode": {
       "options": {
-        "allow_all": "Allow all remote numbers",
-        "allow_list": "Allow only listed remote numbers"
+        "allow_all": "Allow all remote counterparts",
+        "allow_list": "Allow only listed remote counterparts"
       }
     },
     "call_direction": {
@@ -108,7 +135,7 @@
           "instance_id": {"name": "Gateway installation ID"},
           "call_id": {"name": "SIP call ID"},
           "call_direction": {"name": "Call direction"},
-          "remote_number": {"name": "Remote number"},
+          "remote_number": {"name": "Remote counterpart"},
           "received_at": {"name": "Received at"},
           "profile_id": {"name": "Code profile ID"},
           "profile_name": {"name": "Code profile name"}
@@ -117,11 +144,11 @@
       "security": {
         "name": "Security",
         "state_attributes": {
-          "event_type": {"state": {"rejected": "Code rejected", "locked_out": "Remote temporarily locked out"}},
+          "event_type": {"state": {"rejected": "Code rejected", "locked_out": "Remote counterpart temporarily locked out"}},
           "instance_id": {"name": "Gateway installation ID"},
           "call_id": {"name": "SIP call ID"},
           "call_direction": {"name": "Call direction"},
-          "remote_number": {"name": "Remote number"},
+          "remote_number": {"name": "Remote counterpart"},
           "received_at": {"name": "Received at"},
           "lockout_seconds": {"name": "Lockout duration (seconds)"}
         }
