@@ -48,13 +48,33 @@
       "invalid_name": "Gib einen Profilnamen mit höchstens 64 Zeichen ein.",
       "invalid_number": "Eine der Rufnummern der Gegenstelle ist leer oder ungültig.",
       "invalid_number_mode": "Wähle eine gültige Gegenstellenregel.",
-      "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen."
+      "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen.",
+      "stored_configuration_invalid": "Die gespeicherte DTMF-Code-Konfiguration ist unvollständig oder nicht kompatibel. Prüfe das Home-Assistant-Protokoll auf das fehlende Feld, bevor du Codeprofile änderst."
     },
     "abort": {
       "already_configured": "DTMF-Code ist für dieses Gateway bereits eingerichtet.",
       "code_profile_added": "Das Codeprofil {name} wurde dem vorhandenen DTMF-Code-Helfer hinzugefügt.",
       "no_gateways": "Richte zuerst Reolink SIP Gateway 1.0.0 oder neuer ein.",
-      "reconfigure_successful": "Die gemeinsamen Tastatureinstellungen wurden aktualisiert."
+      "reconfigure_successful": "Die gemeinsamen Tastatureinstellungen wurden aktualisiert.",
+      "stored_configuration_invalid": "Die gespeicherte DTMF-Code-Konfiguration ist unvollständig oder nicht kompatibel. Prüfe das Home-Assistant-Protokoll, bevor du Codeprofile änderst."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DTMF-Code-Einstellungen",
+        "description": "Diese Tastatur- und Sicherheitseinstellungen gelten für alle Codeprofile dieses Gateways.",
+        "data": {
+          "submit_key": "Bestätigungstaste",
+          "clear_key": "Löschtaste",
+          "input_timeout": "Eingabezeitlimit",
+          "max_attempts": "Fehlversuche bis zur Sperre",
+          "lockout_seconds": "Sperrdauer"
+        }
+      }
+    },
+    "error": {
+      "control_keys_equal": "Bestätigungs- und Löschtaste müssen verschieden sein."
     }
   },
   "config_subentries": {
@@ -100,10 +120,12 @@
         "invalid_name": "Gib einen Profilnamen mit höchstens 64 Zeichen ein.",
         "invalid_number": "Eine der Rufnummern der Gegenstelle ist leer oder ungültig.",
         "invalid_number_mode": "Wähle eine gültige Gegenstellenregel.",
-        "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen."
+        "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen.",
+        "stored_configuration_invalid": "Die gespeicherte DTMF-Code-Konfiguration ist unvollständig oder nicht kompatibel. Prüfe das Home-Assistant-Protokoll, bevor du Codeprofile änderst."
       },
       "abort": {
-        "reconfigure_successful": "Das Codeprofil wurde aktualisiert."
+        "reconfigure_successful": "Das Codeprofil wurde aktualisiert.",
+        "stored_configuration_invalid": "Die gespeicherte DTMF-Code-Konfiguration ist unvollständig oder nicht kompatibel. Prüfe das Home-Assistant-Protokoll, bevor du Codeprofile änderst."
       }
     }
   },
