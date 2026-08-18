@@ -2,16 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "DTMF-Quelle auswählen",
-        "description": "Wähle das Reolink SIP Gateway, dessen DTMF-Ereignisse geprüft werden sollen.",
+        "title": "DTMF-Code einrichten",
+        "description": "Wähle das Reolink SIP Gateway und konfiguriere das gemeinsame Tastaturverhalten für alle Codeprofile dieses Gateways. Auf der nächsten Seite wird ein Codeprofil mit eigener Ereignis-Entity angelegt.",
         "data": {
-          "gateway_entry_id": "Reolink SIP Gateway"
-        }
-      },
-      "shared": {
-        "title": "DTMF-Tastaturverhalten",
-        "description": "Diese Einstellungen gelten gemeinsam für alle Codeprofile dieses Gateways. Wenn später erneut ein DTMF-Code-Helfer erstellt wird, wird derselbe Collector weiterverwendet und diese gemeinsamen Einstellungen können angepasst werden.",
-        "data": {
+          "gateway_entry_id": "Reolink SIP Gateway",
           "submit_key": "Bestätigungstaste",
           "clear_key": "Löschtaste",
           "input_timeout": "Eingabezeitlimit",
@@ -57,7 +51,8 @@
       "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen."
     },
     "abort": {
-      "code_profile_added": "Das zusätzliche Codeprofil wurde dem vorhandenen DTMF-Collector hinzugefügt.",
+      "already_configured": "DTMF-Code ist für dieses Gateway bereits eingerichtet.",
+      "code_profile_added": "Das Codeprofil {name} wurde dem vorhandenen DTMF-Code-Helfer hinzugefügt.",
       "no_gateways": "Richte zuerst Reolink SIP Gateway 1.0.0 oder neuer ein.",
       "reconfigure_successful": "Die gemeinsamen Tastatureinstellungen wurden aktualisiert."
     }
@@ -66,7 +61,7 @@
     "code": {
       "entry_type": "Codeprofil",
       "initiate_flow": {
-        "reconfigure": "Codeprofil neu konfigurieren",
+        "reconfigure": "Codeprofil ändern",
         "user": "Codeprofil hinzufügen"
       },
       "title": "Codeprofil",
@@ -131,26 +126,61 @@
       "code": {
         "name": "{name}",
         "state_attributes": {
-          "event_type": {"state": {"accepted": "Code akzeptiert"}},
-          "instance_id": {"name": "Gateway-Installations-ID"},
-          "call_id": {"name": "SIP-Anruf-ID"},
-          "call_direction": {"name": "Anrufrichtung"},
-          "remote_number": {"name": "Entfernte Gegenstelle"},
-          "received_at": {"name": "Empfangen um"},
-          "profile_id": {"name": "Codeprofil-ID"},
-          "profile_name": {"name": "Codeprofilname"}
+          "event_type": {
+            "state": {
+              "accepted": "Code akzeptiert"
+            }
+          },
+          "instance_id": {
+            "name": "Gateway-Installations-ID"
+          },
+          "call_id": {
+            "name": "SIP-Anruf-ID"
+          },
+          "call_direction": {
+            "name": "Anrufrichtung"
+          },
+          "remote_number": {
+            "name": "Entfernte Gegenstelle"
+          },
+          "received_at": {
+            "name": "Empfangen um"
+          },
+          "profile_id": {
+            "name": "Codeprofil-ID"
+          },
+          "profile_name": {
+            "name": "Codeprofilname"
+          }
         }
       },
       "security": {
         "name": "Sicherheit",
         "state_attributes": {
-          "event_type": {"state": {"rejected": "Code abgelehnt", "locked_out": "Gegenstelle vorübergehend gesperrt"}},
-          "instance_id": {"name": "Gateway-Installations-ID"},
-          "call_id": {"name": "SIP-Anruf-ID"},
-          "call_direction": {"name": "Anrufrichtung"},
-          "remote_number": {"name": "Entfernte Gegenstelle"},
-          "received_at": {"name": "Empfangen um"},
-          "lockout_seconds": {"name": "Sperrdauer (Sekunden)"}
+          "event_type": {
+            "state": {
+              "rejected": "Code abgelehnt",
+              "locked_out": "Gegenstelle vorübergehend gesperrt"
+            }
+          },
+          "instance_id": {
+            "name": "Gateway-Installations-ID"
+          },
+          "call_id": {
+            "name": "SIP-Anruf-ID"
+          },
+          "call_direction": {
+            "name": "Anrufrichtung"
+          },
+          "remote_number": {
+            "name": "Entfernte Gegenstelle"
+          },
+          "received_at": {
+            "name": "Empfangen um"
+          },
+          "lockout_seconds": {
+            "name": "Sperrdauer (Sekunden)"
+          }
         }
       }
     }
