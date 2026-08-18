@@ -1,8 +1,9 @@
-"""Config and code-subentry flows for DTMF Code."""
+"""Config, options and code-subentry flows for DTMF Code."""
 
 from __future__ import annotations
 
 import hmac
+import logging
 from types import MappingProxyType
 from typing import Any
 from uuid import uuid4
@@ -14,6 +15,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     ConfigSubentry,
     ConfigSubentryFlow,
+    OptionsFlow,
     SubentryFlowResult,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -64,12 +66,28 @@ from .const import (
 )
 from .security import hash_code, new_hash_salt, normalize_remote_number, valid_code
 
+_LOGGER = logging.getLogger(__name__)
+
+_SHARED_KEYS = (
+    CONF_SUBMIT_KEY,
+    CONF_CLEAR_KEY,
+    CONF_INPUT_TIMEOUT,
+    CONF_MAX_ATTEMPTS,
+    CONF_LOCKOUT_SECONDS,
+)
+_REQUIRED_PROFILE_KEYS = (
+    CONF_CODE_HASH,
+    CONF_NUMBER_MODE,
+    CONF_ALLOWED_NUMBERS,
+    CONF_CALL_DIRECTIONS,
+)
+
 
 class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Configure one shared DTMF collector and repeatable code profiles."""
 
     VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 5
 
     def __init__(self) -> None:
         """Initialize one helper creation flow."""
@@ -77,6 +95,12 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._collector_entry: ConfigEntry | None = None
         self._shared_settings: dict[str, str | int] | None = None
         self._new_hash_salt: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> DTMFCodeOptionsFlow:
+        """Return the options flow used by Home Assistant's Helpers page."""
+        return DTMFCodeOptionsFlow()
 
     @classmethod
     @callback
@@ -86,7 +110,9 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the repeatable child configurations."""
         return {SUBENTRY_TYPE_CODE: CodeSubentryFlowHandler}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Select the gateway and configure settings shared by all its codes."""
         gateways = self._available_gateways()
         if not gateways:
@@ -101,7 +127,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "control_keys_equal"
             else:
                 self._select_gateway(gateway_entry)
-                self._shared_settings = self._global_settings(user_input)
+                self._shared_settings = _global_settings(user_input)
                 if self._collector_entry is None:
                     self._new_hash_salt = new_hash_salt()
                 else:
@@ -115,20 +141,22 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_code(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_code(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Create one code profile and its own event entity."""
         if self._gateway_entry is None or self._shared_settings is None:
             return await self.async_step_user()
 
-        # Re-resolve the collector in case another helper flow created it while
-        # this flow was open. There must only ever be one collector per gateway.
         collector = self._collector_for_gateway(self._gateway_entry)
         self._collector_entry = collector
-        hash_salt = (
-            str(collector.data[CONF_HASH_SALT])
-            if collector is not None
-            else self._new_hash_salt or new_hash_salt()
-        )
+        if collector is not None:
+            stored_error = _stored_configuration_error(collector)
+            if stored_error is not None:
+                return self.async_abort(reason=stored_error)
+            hash_salt = str(collector.data[CONF_HASH_SALT])
+        else:
+            hash_salt = self._new_hash_salt or new_hash_salt()
         self._new_hash_salt = hash_salt
 
         errors: dict[str, str] = {}
@@ -199,14 +227,14 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(entry.unique_id)
                 self._abort_if_unique_id_mismatch()
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     entry,
-                    data_updates=self._global_settings(user_input),
+                    data_updates=_global_settings(user_input),
                 )
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self._global_schema(user_input or dict(entry.data)),
+            data_schema=_global_schema(user_input or dict(entry.data)),
             errors=errors,
         )
 
@@ -232,7 +260,9 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.unique_id
         }
 
-    def _initial_user_defaults(self, gateways: dict[str, ConfigEntry]) -> dict[str, Any]:
+    def _initial_user_defaults(
+        self, gateways: dict[str, ConfigEntry]
+    ) -> dict[str, Any]:
         """Use the first gateway and its existing shared settings as defaults."""
         first_entry_id = next(iter(gateways))
         first_gateway = gateways[first_entry_id]
@@ -265,30 +295,25 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         self.hass.config_entries.async_add_subentry(collector, subentry)
 
-    @staticmethod
-    def _global_settings(user_input: dict[str, Any]) -> dict[str, str | int]:
-        return {
-            CONF_SUBMIT_KEY: str(user_input[CONF_SUBMIT_KEY]),
-            CONF_CLEAR_KEY: str(user_input[CONF_CLEAR_KEY]),
-            CONF_INPUT_TIMEOUT: int(user_input[CONF_INPUT_TIMEOUT]),
-            CONF_MAX_ATTEMPTS: int(user_input[CONF_MAX_ATTEMPTS]),
-            CONF_LOCKOUT_SECONDS: int(user_input[CONF_LOCKOUT_SECONDS]),
-        }
-
     def _gateway_schema(
         self,
         gateways: dict[str, ConfigEntry],
         defaults: dict[str, Any],
     ) -> vol.Schema:
-        """Build the original first page: gateway plus shared keypad settings."""
+        """Build the first page: gateway plus shared keypad settings."""
         gateway_options = [
-            {"value": entry_id, "label": entry.title} for entry_id, entry in gateways.items()
+            {"value": entry_id, "label": entry.title}
+            for entry_id, entry in gateways.items()
         ]
-        gateway_default = defaults.get(CONF_GATEWAY_ENTRY_ID, gateway_options[0]["value"])
-        base = self._global_schema(defaults).schema
+        gateway_default = defaults.get(
+            CONF_GATEWAY_ENTRY_ID, gateway_options[0]["value"]
+        )
+        base = _global_schema(defaults).schema
         return vol.Schema(
             {
-                vol.Required(CONF_GATEWAY_ENTRY_ID, default=gateway_default): SelectSelector(
+                vol.Required(
+                    CONF_GATEWAY_ENTRY_ID, default=gateway_default
+                ): SelectSelector(
                     SelectSelectorConfig(
                         options=gateway_options,
                         mode=SelectSelectorMode.DROPDOWN,
@@ -298,68 +323,48 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
 
-    @staticmethod
-    def _global_schema(defaults: dict[str, Any]) -> vol.Schema:
-        return vol.Schema(
-            {
-                vol.Required(
-                    CONF_SUBMIT_KEY,
-                    default=defaults.get(CONF_SUBMIT_KEY, DEFAULT_SUBMIT_KEY),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=list(CONTROL_KEYS), mode=SelectSelectorMode.DROPDOWN
-                    )
-                ),
-                vol.Required(
-                    CONF_CLEAR_KEY,
-                    default=defaults.get(CONF_CLEAR_KEY, DEFAULT_CLEAR_KEY),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=list(CONTROL_KEYS), mode=SelectSelectorMode.DROPDOWN
-                    )
-                ),
-                vol.Required(
-                    CONF_INPUT_TIMEOUT,
-                    default=defaults.get(CONF_INPUT_TIMEOUT, DEFAULT_INPUT_TIMEOUT),
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=3,
-                        max=60,
-                        step=1,
-                        mode=NumberSelectorMode.BOX,
-                        unit_of_measurement="s",
-                    )
-                ),
-                vol.Required(
-                    CONF_MAX_ATTEMPTS,
-                    default=defaults.get(CONF_MAX_ATTEMPTS, DEFAULT_MAX_ATTEMPTS),
-                ): NumberSelector(
-                    NumberSelectorConfig(min=1, max=10, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Required(
-                    CONF_LOCKOUT_SECONDS,
-                    default=defaults.get(CONF_LOCKOUT_SECONDS, DEFAULT_LOCKOUT_SECONDS),
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=10,
-                        max=3600,
-                        step=1,
-                        mode=NumberSelectorMode.BOX,
-                        unit_of_measurement="s",
-                    )
-                ),
-            }
+
+class DTMFCodeOptionsFlow(OptionsFlow):
+    """Edit shared DTMF keypad settings from the Helpers page."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle helper settings."""
+        entry = self.config_entry
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            if user_input[CONF_SUBMIT_KEY] == user_input[CONF_CLEAR_KEY]:
+                errors["base"] = "control_keys_equal"
+            else:
+                updated_data = {**dict(entry.data), **_global_settings(user_input)}
+                self.hass.config_entries.async_update_entry(entry, data=updated_data)
+                # Keep the options object unchanged. Shared settings intentionally
+                # remain in ConfigEntry.data for backward compatibility.
+                return self.async_create_entry(data=dict(entry.options))
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_global_schema(user_input or dict(entry.data)),
+            errors=errors,
         )
 
 
 class CodeSubentryFlowHandler(ConfigSubentryFlow):
     """Create and reconfigure named code profiles from the integration page."""
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Add one named code profile."""
+        entry = self._get_entry()
+        stored_error = _stored_configuration_error(entry)
+        if stored_error is not None:
+            return self.async_abort(reason=stored_error)
+
         errors: dict[str, str] = {}
         if user_input is not None:
-            entry = self._get_entry()
             data, title, error = await _async_validate_profile(
                 self.hass,
                 str(entry.data[CONF_HASH_SALT]),
@@ -390,6 +395,10 @@ class CodeSubentryFlowHandler(ConfigSubentryFlow):
         """Change profile policy and optionally replace its code."""
         subentry = self._get_reconfigure_subentry()
         entry = self._get_entry()
+        stored_error = _stored_configuration_error(entry)
+        if stored_error is not None:
+            return self.async_abort(reason=stored_error)
+
         defaults = {
             CONF_NAME: subentry.title,
             CONF_NUMBER_MODE: subentry.data[CONF_NUMBER_MODE],
@@ -426,6 +435,35 @@ class CodeSubentryFlowHandler(ConfigSubentryFlow):
         )
 
 
+def _stored_configuration_error(entry: ConfigEntry) -> str | None:
+    """Return an abort reason instead of raising on an incompatible stored entry."""
+    for key in (CONF_INSTANCE_ID, CONF_HASH_SALT, *_SHARED_KEYS):
+        if key not in entry.data:
+            _LOGGER.error(
+                "Stored DTMF Code entry %s is missing required key %s",
+                entry.entry_id,
+                key,
+            )
+            return "stored_configuration_invalid"
+
+    hash_salt = entry.data.get(CONF_HASH_SALT)
+    if not isinstance(hash_salt, str) or not hash_salt:
+        _LOGGER.error("Stored DTMF Code entry %s has an invalid hash salt", entry.entry_id)
+        return "stored_configuration_invalid"
+
+    for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_CODE):
+        missing = [key for key in _REQUIRED_PROFILE_KEYS if key not in subentry.data]
+        if missing:
+            _LOGGER.error(
+                "Stored DTMF Code profile %s is missing required keys: %s",
+                subentry.subentry_id,
+                ", ".join(missing),
+            )
+            return "stored_configuration_invalid"
+
+    return None
+
+
 async def _async_validate_profile(
     hass: HomeAssistant,
     hash_salt: str,
@@ -450,7 +488,11 @@ async def _async_validate_profile(
             return {}, title, "invalid_code"
         if not hmac.compare_digest(code, confirmation):
             return {}, title, "code_mismatch"
-        code_hash = await hass.async_add_executor_job(hash_code, code, hash_salt)
+        try:
+            code_hash = await hass.async_add_executor_job(hash_code, code, hash_salt)
+        except (TypeError, ValueError):
+            _LOGGER.exception("Stored DTMF Code hash salt is invalid")
+            return {}, title, "stored_configuration_invalid"
         for subentry in subentries:
             if existing is not None and subentry.subentry_id == existing.subentry_id:
                 continue
@@ -490,7 +532,81 @@ async def _async_validate_profile(
     )
 
 
-def _profile_schema(defaults: dict[str, Any] | None, *, code_required: bool) -> vol.Schema:
+def _global_settings(user_input: dict[str, Any]) -> dict[str, str | int]:
+    """Normalize settings shared by all code profiles."""
+    return {
+        CONF_SUBMIT_KEY: str(user_input[CONF_SUBMIT_KEY]),
+        CONF_CLEAR_KEY: str(user_input[CONF_CLEAR_KEY]),
+        CONF_INPUT_TIMEOUT: int(user_input[CONF_INPUT_TIMEOUT]),
+        CONF_MAX_ATTEMPTS: int(user_input[CONF_MAX_ATTEMPTS]),
+        CONF_LOCKOUT_SECONDS: int(user_input[CONF_LOCKOUT_SECONDS]),
+    }
+
+
+def _global_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Build the shared keypad-settings schema."""
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SUBMIT_KEY,
+                default=defaults.get(CONF_SUBMIT_KEY, DEFAULT_SUBMIT_KEY),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=list(CONTROL_KEYS),
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_CLEAR_KEY,
+                default=defaults.get(CONF_CLEAR_KEY, DEFAULT_CLEAR_KEY),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=list(CONTROL_KEYS),
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_INPUT_TIMEOUT,
+                default=defaults.get(CONF_INPUT_TIMEOUT, DEFAULT_INPUT_TIMEOUT),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=3,
+                    max=60,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                    unit_of_measurement="s",
+                )
+            ),
+            vol.Required(
+                CONF_MAX_ATTEMPTS,
+                default=defaults.get(CONF_MAX_ATTEMPTS, DEFAULT_MAX_ATTEMPTS),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=1,
+                    max=10,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_LOCKOUT_SECONDS,
+                default=defaults.get(CONF_LOCKOUT_SECONDS, DEFAULT_LOCKOUT_SECONDS),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=10,
+                    max=3600,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                    unit_of_measurement="s",
+                )
+            ),
+        }
+    )
+
+
+def _profile_schema(
+    defaults: dict[str, Any] | None, *, code_required: bool
+) -> vol.Schema:
     """Build the code-profile schema shared by both flow entry points."""
     values = defaults or {}
     schema: dict[vol.Marker, Any] = {
@@ -526,10 +642,14 @@ def _profile_schema(defaults: dict[str, Any] | None, *, code_required: bool) -> 
             vol.Optional(
                 CONF_ALLOWED_NUMBERS,
                 default=values.get(CONF_ALLOWED_NUMBERS, []),
-            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEL, multiple=True)),
+            ): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.TEL, multiple=True)
+            ),
             vol.Required(
                 CONF_CALL_DIRECTIONS,
-                default=values.get(CONF_CALL_DIRECTIONS, [CALL_DIRECTION_OUTGOING]),
+                default=values.get(
+                    CONF_CALL_DIRECTIONS, [CALL_DIRECTION_OUTGOING]
+                ),
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=list(CALL_DIRECTIONS),
