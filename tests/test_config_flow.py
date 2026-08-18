@@ -20,6 +20,7 @@ from custom_components.dtmf_code.const import (
     CONF_GATEWAY_ENTRY_ID,
     CONF_HASH_SALT,
     CONF_INPUT_TIMEOUT,
+    CONF_INSTANCE_ID,
     CONF_LOCKOUT_SECONDS,
     CONF_MAX_ATTEMPTS,
     CONF_NAME,
@@ -84,6 +85,7 @@ class FakeCollector:
         self.data = MappingProxyType(
             {
                 CONF_GATEWAY_ENTRY_ID: gateway.entry_id,
+                CONF_INSTANCE_ID: gateway.unique_id,
                 CONF_HASH_SALT: "test-salt",
                 CONF_SUBMIT_KEY: "#",
                 CONF_CLEAR_KEY: "*",
