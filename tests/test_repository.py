@@ -22,7 +22,7 @@ def test_manifest_and_hacs_metadata():
     hacs = json.loads((ROOT / "hacs.json").read_text())
 
     assert manifest["domain"] == "dtmf_code"
-    assert manifest["version"] == "0.2.0"
+    assert manifest["version"] == "0.2.1"
     assert manifest["config_flow"] is True
     assert manifest["integration_type"] == "helper"
     assert manifest["iot_class"] == "local_push"
@@ -37,6 +37,18 @@ def test_translation_files_and_strings_have_identical_keys():
 
     assert _key_tree(strings) == _key_tree(english)
     assert _key_tree(english) == _key_tree(german)
+
+    first_page_fields = {
+        "gateway_entry_id",
+        "submit_key",
+        "clear_key",
+        "input_timeout",
+        "max_attempts",
+        "lockout_seconds",
+    }
+    assert set(strings["config"]["step"]["user"]["data"]) == first_page_fields
+    assert "already_configured" in strings["config"]["abort"]
+    assert "code_profile_added" in strings["config"]["abort"]
 
 
 def test_raw_event_contract_is_documented_without_legacy_caller_field():
