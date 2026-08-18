@@ -2,16 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select DTMF source",
-        "description": "Select the Reolink SIP Gateway whose DTMF events should be validated.",
+        "title": "Set up DTMF Code",
+        "description": "Select the Reolink SIP Gateway and configure the keypad behavior shared by all code profiles on that gateway. The next page creates one code profile with its own event entity.",
         "data": {
-          "gateway_entry_id": "Reolink SIP Gateway"
-        }
-      },
-      "shared": {
-        "title": "DTMF keypad behavior",
-        "description": "These settings are shared by every code profile on this gateway. Creating another DTMF Code helper later reuses the same collector and can update these shared settings.",
-        "data": {
+          "gateway_entry_id": "Reolink SIP Gateway",
           "submit_key": "Submit key",
           "clear_key": "Clear key",
           "input_timeout": "Input timeout",
@@ -57,7 +51,8 @@
       "numbers_required": "Add at least one remote counterpart or explicitly allow all remote counterparts."
     },
     "abort": {
-      "code_profile_added": "The additional code profile was added to the existing DTMF collector.",
+      "already_configured": "DTMF Code is already configured for this gateway.",
+      "code_profile_added": "Code profile {name} was added to the existing DTMF Code helper.",
       "no_gateways": "Set up Reolink SIP Gateway 1.0.0 or newer before adding DTMF Code.",
       "reconfigure_successful": "The shared keypad settings were updated."
     }
@@ -131,26 +126,61 @@
       "code": {
         "name": "{name}",
         "state_attributes": {
-          "event_type": {"state": {"accepted": "Code accepted"}},
-          "instance_id": {"name": "Gateway installation ID"},
-          "call_id": {"name": "SIP call ID"},
-          "call_direction": {"name": "Call direction"},
-          "remote_number": {"name": "Remote counterpart"},
-          "received_at": {"name": "Received at"},
-          "profile_id": {"name": "Code profile ID"},
-          "profile_name": {"name": "Code profile name"}
+          "event_type": {
+            "state": {
+              "accepted": "Code accepted"
+            }
+          },
+          "instance_id": {
+            "name": "Gateway installation ID"
+          },
+          "call_id": {
+            "name": "SIP call ID"
+          },
+          "call_direction": {
+            "name": "Call direction"
+          },
+          "remote_number": {
+            "name": "Remote counterpart"
+          },
+          "received_at": {
+            "name": "Received at"
+          },
+          "profile_id": {
+            "name": "Code profile ID"
+          },
+          "profile_name": {
+            "name": "Code profile name"
+          }
         }
       },
       "security": {
         "name": "Security",
         "state_attributes": {
-          "event_type": {"state": {"rejected": "Code rejected", "locked_out": "Remote counterpart temporarily locked out"}},
-          "instance_id": {"name": "Gateway installation ID"},
-          "call_id": {"name": "SIP call ID"},
-          "call_direction": {"name": "Call direction"},
-          "remote_number": {"name": "Remote counterpart"},
-          "received_at": {"name": "Received at"},
-          "lockout_seconds": {"name": "Lockout duration (seconds)"}
+          "event_type": {
+            "state": {
+              "rejected": "Code rejected",
+              "locked_out": "Remote counterpart temporarily locked out"
+            }
+          },
+          "instance_id": {
+            "name": "Gateway installation ID"
+          },
+          "call_id": {
+            "name": "SIP call ID"
+          },
+          "call_direction": {
+            "name": "Call direction"
+          },
+          "remote_number": {
+            "name": "Remote counterpart"
+          },
+          "received_at": {
+            "name": "Received at"
+          },
+          "lockout_seconds": {
+            "name": "Lockout duration (seconds)"
+          }
         }
       }
     }
