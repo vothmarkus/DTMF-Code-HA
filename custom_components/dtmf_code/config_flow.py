@@ -69,7 +69,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Configure one shared DTMF collector and repeatable code profiles."""
 
     VERSION = 1
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
 
     def __init__(self) -> None:
         """Initialize one helper creation flow."""
@@ -87,69 +87,34 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         return {SUBENTRY_TYPE_CODE: CodeSubentryFlowHandler}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Select a gateway when necessary, then configure shared keypad behavior."""
+        """Select the gateway and configure settings shared by all its codes."""
         gateways = self._available_gateways()
         if not gateways:
             return self.async_abort(reason="no_gateways")
-
-        if len(gateways) == 1 and user_input is None:
-            self._select_gateway(next(iter(gateways.values())))
-            return await self.async_step_shared()
 
         errors: dict[str, str] = {}
         if user_input is not None:
             gateway_entry = gateways.get(str(user_input[CONF_GATEWAY_ENTRY_ID]))
             if gateway_entry is None or gateway_entry.unique_id is None:
                 errors["base"] = "gateway_not_found"
-            else:
-                self._select_gateway(gateway_entry)
-                return await self.async_step_shared()
-
-        gateway_options = [
-            {"value": entry_id, "label": entry.title} for entry_id, entry in gateways.items()
-        ]
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_GATEWAY_ENTRY_ID,
-                        default=gateway_options[0]["value"],
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=gateway_options,
-                            mode=SelectSelectorMode.DROPDOWN,
-                        )
-                    )
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_shared(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Configure settings shared by every code profile on this gateway."""
-        if self._gateway_entry is None:
-            return await self.async_step_user()
-
-        defaults = dict(self._collector_entry.data) if self._collector_entry is not None else {}
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            if user_input[CONF_SUBMIT_KEY] == user_input[CONF_CLEAR_KEY]:
+            elif user_input[CONF_SUBMIT_KEY] == user_input[CONF_CLEAR_KEY]:
                 errors["base"] = "control_keys_equal"
             else:
+                self._select_gateway(gateway_entry)
                 self._shared_settings = self._global_settings(user_input)
                 if self._collector_entry is None:
                     self._new_hash_salt = new_hash_salt()
                 return await self.async_step_code()
 
+        defaults = user_input or self._initial_user_defaults(gateways)
         return self.async_show_form(
-            step_id="shared",
-            data_schema=self._global_schema(user_input or defaults),
+            step_id="user",
+            data_schema=self._gateway_schema(gateways, defaults),
             errors=errors,
         )
 
     async def async_step_code(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Create one additional code profile and its own event entity."""
+        """Create one code profile and its own event entity."""
         if self._gateway_entry is None or self._shared_settings is None:
             return await self.async_step_user()
 
@@ -179,19 +144,11 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             if error is None:
                 if collector is not None:
-                    updated_data = {**dict(collector.data), **self._shared_settings}
-                    if updated_data != dict(collector.data):
-                        self.hass.config_entries.async_update_entry(collector, data=updated_data)
-                    self.hass.config_entries.async_add_subentry(
-                        collector,
-                        ConfigSubentry(
-                            data=MappingProxyType(data),
-                            subentry_type=SUBENTRY_TYPE_CODE,
-                            title=title,
-                            unique_id=str(uuid4()),
-                        ),
+                    self._update_existing_collector(collector, data, title)
+                    return self.async_abort(
+                        reason="code_profile_added",
+                        description_placeholders={"name": title},
                     )
-                    return self.async_abort(reason="code_profile_added")
 
                 gateway = self._gateway_entry
                 if gateway.unique_id is None:
@@ -266,11 +223,49 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         return None
 
     def _available_gateways(self) -> dict[str, ConfigEntry]:
+        """Return selectable Reolink SIP Gateway config entries."""
         return {
             entry.entry_id: entry
             for entry in self.hass.config_entries.async_entries(REOLINK_DOMAIN)
             if entry.unique_id
         }
+
+    def _initial_user_defaults(self, gateways: dict[str, ConfigEntry]) -> dict[str, Any]:
+        """Use the first gateway and its existing shared settings as defaults."""
+        first_entry_id = next(iter(gateways))
+        first_gateway = gateways[first_entry_id]
+        collector = self._collector_for_gateway(first_gateway)
+        defaults = dict(collector.data) if collector is not None else {}
+        defaults[CONF_GATEWAY_ENTRY_ID] = first_entry_id
+        return defaults
+
+    def _update_existing_collector(
+        self,
+        collector: ConfigEntry,
+        profile_data: dict[str, Any],
+        title: str,
+    ) -> None:
+        """Atomically add a profile and update shared settings once."""
+        if self._shared_settings is None:
+            raise RuntimeError("shared DTMF settings are not initialized")
+
+        subentry = ConfigSubentry(
+            data=MappingProxyType(profile_data),
+            subentry_type=SUBENTRY_TYPE_CODE,
+            title=title,
+            unique_id=str(uuid4()),
+        )
+        updated_subentries = dict(collector.subentries)
+        updated_subentries[subentry.subentry_id] = subentry
+        updated_data = {**dict(collector.data), **self._shared_settings}
+
+        # One config-entry update means one update-listener notification and one
+        # reload. The previous two-step update could schedule overlapping reloads.
+        self.hass.config_entries.async_update_entry(
+            collector,
+            data=updated_data,
+            subentries=updated_subentries,
+        )
 
     @staticmethod
     def _global_settings(user_input: dict[str, Any]) -> dict[str, str | int]:
@@ -281,6 +276,29 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_MAX_ATTEMPTS: int(user_input[CONF_MAX_ATTEMPTS]),
             CONF_LOCKOUT_SECONDS: int(user_input[CONF_LOCKOUT_SECONDS]),
         }
+
+    def _gateway_schema(
+        self,
+        gateways: dict[str, ConfigEntry],
+        defaults: dict[str, Any],
+    ) -> vol.Schema:
+        """Build the original first page: gateway plus shared keypad settings."""
+        gateway_options = [
+            {"value": entry_id, "label": entry.title} for entry_id, entry in gateways.items()
+        ]
+        gateway_default = defaults.get(CONF_GATEWAY_ENTRY_ID, gateway_options[0]["value"])
+        base = self._global_schema(defaults).schema
+        return vol.Schema(
+            {
+                vol.Required(CONF_GATEWAY_ENTRY_ID, default=gateway_default): SelectSelector(
+                    SelectSelectorConfig(
+                        options=gateway_options,
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                **base,
+            }
+        )
 
     @staticmethod
     def _global_schema(defaults: dict[str, Any]) -> vol.Schema:
