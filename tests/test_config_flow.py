@@ -246,9 +246,7 @@ def test_second_helper_updates_shared_settings_before_profile_page(monkeypatch):
             lambda code, _salt: f"hash:{code}",
         )
 
-        page_two = await flow.async_step_user(
-            _shared_input(gateway.entry_id, timeout=15)
-        )
+        page_two = await flow.async_step_user(_shared_input(gateway.entry_id, timeout=15))
 
         assert page_two["step_id"] == "code"
         assert len(config_entries.updates) == 1
