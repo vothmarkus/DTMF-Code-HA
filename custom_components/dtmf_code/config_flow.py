@@ -86,9 +86,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the repeatable child configurations."""
         return {SUBENTRY_TYPE_CODE: CodeSubentryFlowHandler}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Select the gateway and configure settings shared by all its codes."""
         gateways = self._available_gateways()
         if not gateways:
@@ -115,9 +113,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_code(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_code(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create one code profile and its own event entity."""
         if self._gateway_entry is None or self._shared_settings is None:
             return await self.async_step_user()
@@ -234,9 +230,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.unique_id
         }
 
-    def _initial_user_defaults(
-        self, gateways: dict[str, ConfigEntry]
-    ) -> dict[str, Any]:
+    def _initial_user_defaults(self, gateways: dict[str, ConfigEntry]) -> dict[str, Any]:
         """Use the first gateway and its existing shared settings as defaults."""
         first_entry_id = next(iter(gateways))
         first_gateway = gateways[first_entry_id]
@@ -290,18 +284,13 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> vol.Schema:
         """Build the original first page: gateway plus shared keypad settings."""
         gateway_options = [
-            {"value": entry_id, "label": entry.title}
-            for entry_id, entry in gateways.items()
+            {"value": entry_id, "label": entry.title} for entry_id, entry in gateways.items()
         ]
-        gateway_default = defaults.get(
-            CONF_GATEWAY_ENTRY_ID, gateway_options[0]["value"]
-        )
+        gateway_default = defaults.get(CONF_GATEWAY_ENTRY_ID, gateway_options[0]["value"])
         base = self._global_schema(defaults).schema
         return vol.Schema(
             {
-                vol.Required(
-                    CONF_GATEWAY_ENTRY_ID, default=gateway_default
-                ): SelectSelector(
+                vol.Required(CONF_GATEWAY_ENTRY_ID, default=gateway_default): SelectSelector(
                     SelectSelectorConfig(
                         options=gateway_options,
                         mode=SelectSelectorMode.DROPDOWN,
@@ -347,15 +336,11 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_MAX_ATTEMPTS,
                     default=defaults.get(CONF_MAX_ATTEMPTS, DEFAULT_MAX_ATTEMPTS),
                 ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=1, max=10, step=1, mode=NumberSelectorMode.BOX
-                    )
+                    NumberSelectorConfig(min=1, max=10, step=1, mode=NumberSelectorMode.BOX)
                 ),
                 vol.Required(
                     CONF_LOCKOUT_SECONDS,
-                    default=defaults.get(
-                        CONF_LOCKOUT_SECONDS, DEFAULT_LOCKOUT_SECONDS
-                    ),
+                    default=defaults.get(CONF_LOCKOUT_SECONDS, DEFAULT_LOCKOUT_SECONDS),
                 ): NumberSelector(
                     NumberSelectorConfig(
                         min=10,
@@ -372,9 +357,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
 class CodeSubentryFlowHandler(ConfigSubentryFlow):
     """Create and reconfigure named code profiles from the integration page."""
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> SubentryFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Add one named code profile."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -509,9 +492,7 @@ async def _async_validate_profile(
     )
 
 
-def _profile_schema(
-    defaults: dict[str, Any] | None, *, code_required: bool
-) -> vol.Schema:
+def _profile_schema(defaults: dict[str, Any] | None, *, code_required: bool) -> vol.Schema:
     """Build the code-profile schema shared by both flow entry points."""
     values = defaults or {}
     schema: dict[vol.Marker, Any] = {
@@ -547,14 +528,10 @@ def _profile_schema(
             vol.Optional(
                 CONF_ALLOWED_NUMBERS,
                 default=values.get(CONF_ALLOWED_NUMBERS, []),
-            ): TextSelector(
-                TextSelectorConfig(type=TextSelectorType.TEL, multiple=True)
-            ),
+            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEL, multiple=True)),
             vol.Required(
                 CONF_CALL_DIRECTIONS,
-                default=values.get(
-                    CONF_CALL_DIRECTIONS, [CALL_DIRECTION_OUTGOING]
-                ),
+                default=values.get(CONF_CALL_DIRECTIONS, [CALL_DIRECTION_OUTGOING]),
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=list(CALL_DIRECTIONS),
