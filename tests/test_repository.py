@@ -22,7 +22,7 @@ def test_manifest_and_hacs_metadata():
     hacs = json.loads((ROOT / "hacs.json").read_text())
 
     assert manifest["domain"] == "dtmf_code"
-    assert manifest["version"] == "0.2.3"
+    assert manifest["version"] == "0.2.4"
     assert manifest["config_flow"] is True
     assert manifest["integration_type"] == "helper"
     assert manifest["iot_class"] == "local_push"
