@@ -20,6 +20,7 @@ from custom_components.dtmf_code.const import (
     CONF_CODE_CONFIRM,
     CONF_GATEWAY_ENTRY_ID,
     CONF_INPUT_TIMEOUT,
+    CONF_INSTANCE_ID,
     CONF_LOCKOUT_SECONDS,
     CONF_MAX_ATTEMPTS,
     CONF_NAME,
@@ -43,14 +44,20 @@ def _add_gateway(hass: HomeAssistant) -> MockConfigEntry:
     return gateway
 
 
+def _settings_input(*, timeout: int = 10) -> dict[str, object]:
+    return {
+        CONF_SUBMIT_KEY: "#",
+        CONF_CLEAR_KEY: "*",
+        CONF_INPUT_TIMEOUT: timeout,
+        CONF_MAX_ATTEMPTS: 5,
+        CONF_LOCKOUT_SECONDS: 60,
+    }
+
+
 def _shared_input(gateway: MockConfigEntry) -> dict[str, object]:
     return {
         CONF_GATEWAY_ENTRY_ID: gateway.entry_id,
-        CONF_SUBMIT_KEY: "#",
-        CONF_CLEAR_KEY: "*",
-        CONF_INPUT_TIMEOUT: 10,
-        CONF_MAX_ATTEMPTS: 5,
-        CONF_LOCKOUT_SECONDS: 60,
+        **_settings_input(),
     }
 
 
@@ -101,10 +108,32 @@ async def test_first_helper_creates_and_loads_in_real_home_assistant(
     await _create_first_helper(hass, gateway)
 
 
+async def test_helpers_page_options_flow_can_be_opened_and_saved(
+    hass: HomeAssistant,
+) -> None:
+    """The Helpers page must have the options handler its frontend requires."""
+    gateway = _add_gateway(hass)
+    entry = await _create_first_helper(hass, gateway)
+
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert form["type"] is FlowResultType.FORM
+    assert form["step_id"] == "init"
+
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        _settings_input(timeout=15),
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    await hass.async_block_till_done()
+    assert entry.data[CONF_INPUT_TIMEOUT] == 15
+    assert entry.state is ConfigEntryState.LOADED
+
+
 async def test_existing_helper_reconfigure_flow_can_be_opened(
     hass: HomeAssistant,
 ) -> None:
-    """Opening an existing helper must resolve a valid config-flow handler."""
+    """The integration-page reconfigure flow must remain available."""
     gateway = _add_gateway(hass)
     entry = await _create_first_helper(hass, gateway)
 
@@ -170,3 +199,29 @@ async def test_add_code_profile_via_real_subentry_flow(
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.LOADED
     assert len(entry.get_subentries_of_type(SUBENTRY_TYPE_CODE)) == 2
+
+
+async def test_incomplete_stored_entry_aborts_instead_of_unknown_error(
+    hass: HomeAssistant,
+) -> None:
+    """Stored-data damage must produce a controlled error, not a backend exception."""
+    gateway = _add_gateway(hass)
+    broken = MockConfigEntry(
+        domain=DOMAIN,
+        title="DTMF Code - Reolink SIP Gateway",
+        unique_id=gateway.unique_id,
+        data={
+            CONF_GATEWAY_ENTRY_ID: gateway.entry_id,
+            CONF_INSTANCE_ID: gateway.unique_id,
+            **_settings_input(),
+        },
+    )
+    broken.add_to_hass(hass)
+
+    result = await hass.config_entries.subentries.async_init(
+        (broken.entry_id, SUBENTRY_TYPE_CODE),
+        context=SubentryFlowContext(source=SOURCE_USER),
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "stored_configuration_invalid"
