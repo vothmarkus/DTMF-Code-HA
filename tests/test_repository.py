@@ -22,7 +22,7 @@ def test_manifest_and_hacs_metadata():
     hacs = json.loads((ROOT / "hacs.json").read_text())
 
     assert manifest["domain"] == "dtmf_code"
-    assert manifest["version"] == "0.2.2"
+    assert manifest["version"] == "0.2.3"
     assert manifest["config_flow"] is True
     assert manifest["integration_type"] == "helper"
     assert manifest["iot_class"] == "local_push"
@@ -46,9 +46,13 @@ def test_translation_files_and_strings_have_identical_keys():
         "max_attempts",
         "lockout_seconds",
     }
+    shared_fields = first_page_fields - {"gateway_entry_id"}
     assert set(strings["config"]["step"]["user"]["data"]) == first_page_fields
+    assert set(strings["options"]["step"]["init"]["data"]) == shared_fields
     assert "already_configured" in strings["config"]["abort"]
     assert "code_profile_added" in strings["config"]["abort"]
+    assert "stored_configuration_invalid" in strings["config"]["abort"]
+    assert "stored_configuration_invalid" in strings["config_subentries"]["code"]["abort"]
 
 
 def test_german_helper_pages_have_explicit_field_translations():
@@ -75,6 +79,16 @@ def test_german_helper_pages_have_explicit_field_translations():
         "number_mode": "Zugelassene Gegenstellen",
         "allowed_numbers": "Rufnummernfreigabe der Gegenstelle",
         "call_directions": "Zugelassene Anrufrichtungen",
+    }
+
+    options_page = german["options"]["step"]["init"]
+    assert options_page["title"] == "DTMF-Code-Einstellungen"
+    assert options_page["data"] == {
+        "submit_key": "Bestätigungstaste",
+        "clear_key": "Löschtaste",
+        "input_timeout": "Eingabezeitlimit",
+        "max_attempts": "Fehlversuche bis zur Sperre",
+        "lockout_seconds": "Sperrdauer",
     }
 
 
