@@ -463,7 +463,10 @@ async def _async_validate_profile(
     for subentry in subentries:
         if existing is not None and subentry.subentry_id == existing.subentry_id:
             continue
-        if hmac.compare_digest(subentry.title.casefold(), title.casefold()):
+        # Profile names are human-readable Unicode labels, not secrets.  A
+        # normal case-insensitive Unicode comparison is both correct and safe;
+        # hmac.compare_digest(str, str) deliberately rejects non-ASCII text.
+        if subentry.title.casefold() == title.casefold():
             return {}, title, "duplicate_name"
 
     code = str(user_input.get(CONF_CODE, ""))
@@ -471,7 +474,10 @@ async def _async_validate_profile(
     if existing is None or code or confirmation:
         if not valid_code(code):
             return {}, title, "invalid_code"
-        if not hmac.compare_digest(code, confirmation):
+        # This is input validation in an authenticated configuration flow, not
+        # a secret verification boundary. A regular comparison also handles a
+        # mistyped non-ASCII confirmation without raising TypeError.
+        if code != confirmation:
             return {}, title, "code_mismatch"
         try:
             code_hash = await hass.async_add_executor_job(hash_code, code, hash_salt)
