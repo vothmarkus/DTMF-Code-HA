@@ -86,9 +86,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the repeatable child configurations."""
         return {SUBENTRY_TYPE_CODE: CodeSubentryFlowHandler}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Select a gateway when necessary, then configure shared keypad behavior."""
         gateways = self._available_gateways()
         if not gateways:
@@ -108,8 +106,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_shared()
 
         gateway_options = [
-            {"value": entry_id, "label": entry.title}
-            for entry_id, entry in gateways.items()
+            {"value": entry_id, "label": entry.title} for entry_id, entry in gateways.items()
         ]
         return self.async_show_form(
             step_id="user",
@@ -129,18 +126,12 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_shared(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_shared(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Configure settings shared by every code profile on this gateway."""
         if self._gateway_entry is None:
             return await self.async_step_user()
 
-        defaults = (
-            dict(self._collector_entry.data)
-            if self._collector_entry is not None
-            else {}
-        )
+        defaults = dict(self._collector_entry.data) if self._collector_entry is not None else {}
         errors: dict[str, str] = {}
         if user_input is not None:
             if user_input[CONF_SUBMIT_KEY] == user_input[CONF_CLEAR_KEY]:
@@ -157,9 +148,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_code(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_code(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create one additional code profile and its own event entity."""
         if self._gateway_entry is None or self._shared_settings is None:
             return await self.async_step_user()
@@ -192,9 +181,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                 if collector is not None:
                     updated_data = {**dict(collector.data), **self._shared_settings}
                     if updated_data != dict(collector.data):
-                        self.hass.config_entries.async_update_entry(
-                            collector, data=updated_data
-                        )
+                        self.hass.config_entries.async_update_entry(collector, data=updated_data)
                     self.hass.config_entries.async_add_subentry(
                         collector,
                         ConfigSubentry(
@@ -331,9 +318,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_MAX_ATTEMPTS,
                     default=defaults.get(CONF_MAX_ATTEMPTS, DEFAULT_MAX_ATTEMPTS),
                 ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=1, max=10, step=1, mode=NumberSelectorMode.BOX
-                    )
+                    NumberSelectorConfig(min=1, max=10, step=1, mode=NumberSelectorMode.BOX)
                 ),
                 vol.Required(
                     CONF_LOCKOUT_SECONDS,
@@ -354,9 +339,7 @@ class DTMFCodeConfigFlow(ConfigFlow, domain=DOMAIN):
 class CodeSubentryFlowHandler(ConfigSubentryFlow):
     """Create and reconfigure named code profiles from the integration page."""
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> SubentryFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Add one named code profile."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -491,9 +474,7 @@ async def _async_validate_profile(
     )
 
 
-def _profile_schema(
-    defaults: dict[str, Any] | None, *, code_required: bool
-) -> vol.Schema:
+def _profile_schema(defaults: dict[str, Any] | None, *, code_required: bool) -> vol.Schema:
     """Build the code-profile schema shared by both flow entry points."""
     values = defaults or {}
     schema: dict[vol.Marker, Any] = {
