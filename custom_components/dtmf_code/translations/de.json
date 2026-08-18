@@ -2,15 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "DTMF-Code einrichten",
-        "description": "Wähle das Reolink SIP Gateway, dessen flüchtige DTMF-Ereignisse geprüft werden sollen. Anschließend öffnet sich automatisch die Einrichtung des ersten Codeprofils.",
+        "title": "DTMF-Quelle auswählen",
+        "description": "Wähle das Reolink SIP Gateway, dessen DTMF-Ereignisse geprüft werden sollen.",
         "data": {
-          "gateway_entry_id": "Reolink SIP Gateway",
+          "gateway_entry_id": "Reolink SIP Gateway"
+        }
+      },
+      "shared": {
+        "title": "DTMF-Tastaturverhalten",
+        "description": "Diese Einstellungen gelten gemeinsam für alle Codeprofile dieses Gateways. Wenn später erneut ein DTMF-Code-Helfer erstellt wird, wird derselbe Collector weiterverwendet und diese gemeinsamen Einstellungen können angepasst werden.",
+        "data": {
           "submit_key": "Bestätigungstaste",
           "clear_key": "Löschtaste",
           "input_timeout": "Eingabezeitlimit",
           "max_attempts": "Fehlversuche bis zur Sperre",
           "lockout_seconds": "Sperrdauer"
+        }
+      },
+      "code": {
+        "title": "Codeprofil hinzufügen",
+        "description": "Erstelle einen Code mit einer eigenen Home-Assistant-Ereignis-Entity. Der Zahlencode muss aus {min_length} bis {max_length} Ziffern bestehen. Die Rufnummernregel bezieht sich immer auf die entfernte Gegenstelle: bei eingehenden Anrufen auf den Anrufer, bei ausgehenden Anrufen auf das angerufene Ziel. Rufnummern werden nach reiner Formatbereinigung exakt verglichen; Länderkennungen werden nicht automatisch umgerechnet.",
+        "data": {
+          "name": "Profilname",
+          "code": "Zugangscode",
+          "code_confirm": "Zugangscode bestätigen",
+          "number_mode": "Zugelassene Gegenstellen",
+          "allowed_numbers": "Rufnummernfreigabe der Gegenstelle",
+          "call_directions": "Zugelassene Anrufrichtungen"
         }
       },
       "reconfigure": {
@@ -26,11 +44,20 @@
       }
     },
     "error": {
+      "code_mismatch": "Die beiden Codeeingaben stimmen nicht überein.",
       "control_keys_equal": "Bestätigungs- und Löschtaste müssen verschieden sein.",
-      "gateway_not_found": "Das gewählte Reolink SIP Gateway ist nicht mehr vorhanden."
+      "directions_required": "Wähle mindestens eine gültige Anrufrichtung.",
+      "duplicate_code": "Dieser Zugangscode ist bereits einem anderen Profil zugeordnet.",
+      "duplicate_name": "Ein anderes Profil verwendet bereits diesen Namen.",
+      "gateway_not_found": "Das gewählte Reolink SIP Gateway ist nicht mehr vorhanden.",
+      "invalid_code": "Gib einen Zahlencode mit der erforderlichen Länge ein.",
+      "invalid_name": "Gib einen Profilnamen mit höchstens 64 Zeichen ein.",
+      "invalid_number": "Eine der Rufnummern der Gegenstelle ist leer oder ungültig.",
+      "invalid_number_mode": "Wähle eine gültige Gegenstellenregel.",
+      "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen."
     },
     "abort": {
-      "already_configured": "DTMF-Code ist für dieses Gateway bereits eingerichtet.",
+      "code_profile_added": "Das zusätzliche Codeprofil wurde dem vorhandenen DTMF-Collector hinzugefügt.",
       "no_gateways": "Richte zuerst Reolink SIP Gateway 1.0.0 oder neuer ein.",
       "reconfigure_successful": "Die gemeinsamen Tastatureinstellungen wurden aktualisiert."
     }
@@ -46,25 +73,25 @@
       "step": {
         "user": {
           "title": "Codeprofil hinzufügen",
-          "description": "Der Zahlencode muss aus {min_length} bis {max_length} Ziffern bestehen. Rufnummern werden nach der Normalisierung exakt verglichen.",
+          "description": "Der Zahlencode muss aus {min_length} bis {max_length} Ziffern bestehen. Die Rufnummernregel bezieht sich immer auf die entfernte Gegenstelle: bei eingehenden Anrufen auf den Anrufer, bei ausgehenden Anrufen auf das angerufene Ziel. Rufnummern werden nach reiner Formatbereinigung exakt verglichen; Länderkennungen werden nicht automatisch umgerechnet.",
           "data": {
             "name": "Profilname",
             "code": "Zugangscode",
             "code_confirm": "Zugangscode bestätigen",
             "number_mode": "Zugelassene Gegenstellen",
-            "allowed_numbers": "Rufnummernfreigabe",
+            "allowed_numbers": "Rufnummernfreigabe der Gegenstelle",
             "call_directions": "Zugelassene Anrufrichtungen"
           }
         },
         "reconfigure": {
           "title": "Codeprofil ändern",
-          "description": "Lasse beide Codefelder leer, um den bisherigen Code beizubehalten. Ein neuer Code muss aus {min_length} bis {max_length} Ziffern bestehen.",
+          "description": "Lasse beide Codefelder leer, um den bisherigen Code beizubehalten. Ein neuer Code muss aus {min_length} bis {max_length} Ziffern bestehen. Die Rufnummernregel bezieht sich immer auf die entfernte Gegenstelle.",
           "data": {
             "name": "Profilname",
             "code": "Neuer Zugangscode (optional)",
             "code_confirm": "Neuen Zugangscode bestätigen",
             "number_mode": "Zugelassene Gegenstellen",
-            "allowed_numbers": "Rufnummernfreigabe",
+            "allowed_numbers": "Rufnummernfreigabe der Gegenstelle",
             "call_directions": "Zugelassene Anrufrichtungen"
           }
         }
@@ -76,9 +103,9 @@
         "duplicate_name": "Ein anderes Profil verwendet bereits diesen Namen.",
         "invalid_code": "Gib einen Zahlencode mit der erforderlichen Länge ein.",
         "invalid_name": "Gib einen Profilnamen mit höchstens 64 Zeichen ein.",
-        "invalid_number": "Eine der Rufnummern ist leer oder ungültig.",
-        "invalid_number_mode": "Wähle eine gültige Rufnummernregel.",
-        "numbers_required": "Füge mindestens eine Rufnummer hinzu oder erlaube ausdrücklich alle Gegenstellen."
+        "invalid_number": "Eine der Rufnummern der Gegenstelle ist leer oder ungültig.",
+        "invalid_number_mode": "Wähle eine gültige Gegenstellenregel.",
+        "numbers_required": "Füge mindestens eine Gegenstelle hinzu oder erlaube ausdrücklich alle Gegenstellen."
       },
       "abort": {
         "reconfigure_successful": "Das Codeprofil wurde aktualisiert."
@@ -89,7 +116,7 @@
     "number_mode": {
       "options": {
         "allow_all": "Alle Gegenstellen erlauben",
-        "allow_list": "Nur eingetragene Rufnummern erlauben"
+        "allow_list": "Nur eingetragene Gegenstellen erlauben"
       }
     },
     "call_direction": {
@@ -108,7 +135,7 @@
           "instance_id": {"name": "Gateway-Installations-ID"},
           "call_id": {"name": "SIP-Anruf-ID"},
           "call_direction": {"name": "Anrufrichtung"},
-          "remote_number": {"name": "Rufnummer der Gegenstelle"},
+          "remote_number": {"name": "Entfernte Gegenstelle"},
           "received_at": {"name": "Empfangen um"},
           "profile_id": {"name": "Codeprofil-ID"},
           "profile_name": {"name": "Codeprofilname"}
@@ -121,7 +148,7 @@
           "instance_id": {"name": "Gateway-Installations-ID"},
           "call_id": {"name": "SIP-Anruf-ID"},
           "call_direction": {"name": "Anrufrichtung"},
-          "remote_number": {"name": "Rufnummer der Gegenstelle"},
+          "remote_number": {"name": "Entfernte Gegenstelle"},
           "received_at": {"name": "Empfangen um"},
           "lockout_seconds": {"name": "Sperrdauer (Sekunden)"}
         }
