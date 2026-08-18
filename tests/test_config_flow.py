@@ -34,14 +34,14 @@ from custom_components.dtmf_code.const import (
 class FakeConfigEntries:
     """Minimal config-entry manager for flow tests."""
 
-    def __init__(self, gateway, collector=None) -> None:
-        self.gateway = gateway
+    def __init__(self, gateways, collector=None) -> None:
+        self.gateways = gateways if isinstance(gateways, list) else [gateways]
         self.collector = collector
         self.updates = []
 
     def async_entries(self, domain):
         if domain == REOLINK_DOMAIN:
-            return [self.gateway]
+            return self.gateways
         if domain == DOMAIN and self.collector is not None:
             return [self.collector]
         return []
@@ -87,11 +87,11 @@ class FakeCollector:
         return list(self.subentries.values())
 
 
-def _gateway():
+def _gateway(number=1):
     return SimpleNamespace(
-        entry_id="gateway-1",
-        unique_id="12345678-1234-5678-9234-567812345678",
-        title="Front Door",
+        entry_id=f"gateway-{number}",
+        unique_id=f"12345678-1234-5678-9234-56781234567{number}",
+        title=f"Front Door {number}",
     )
 
 
@@ -109,6 +109,17 @@ def _existing_profile():
         title="Main",
         unique_id="profile-main",
     )
+
+
+def _shared_input(gateway_entry_id):
+    return {
+        CONF_GATEWAY_ENTRY_ID: gateway_entry_id,
+        CONF_SUBMIT_KEY: "#",
+        CONF_CLEAR_KEY: "*",
+        CONF_INPUT_TIMEOUT: 10,
+        CONF_MAX_ATTEMPTS: 5,
+        CONF_LOCKOUT_SECONDS: 60,
+    }
 
 
 def test_single_gateway_is_still_selectable_on_first_page():
@@ -129,6 +140,24 @@ def test_single_gateway_is_still_selectable_on_first_page():
             CONF_MAX_ATTEMPTS,
             CONF_LOCKOUT_SECONDS,
         }
+
+    asyncio.run(run_test())
+
+
+def test_multiple_gateways_can_select_the_second_gateway():
+    async def run_test() -> None:
+        first_gateway = _gateway(1)
+        second_gateway = _gateway(2)
+        flow = DTMFCodeConfigFlow()
+        flow.hass = FakeHass(FakeConfigEntries([first_gateway, second_gateway]))
+
+        initial = await flow.async_step_user()
+        assert initial["step_id"] == "user"
+
+        result = await flow.async_step_user(_shared_input(second_gateway.entry_id))
+
+        assert result["step_id"] == "code"
+        assert flow._gateway_entry is second_gateway
 
     asyncio.run(run_test())
 
