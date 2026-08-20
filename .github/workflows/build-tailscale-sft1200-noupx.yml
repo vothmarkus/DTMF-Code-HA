@@ -1,0 +1,109 @@
+name: Build Tailscale SFT1200 no-UPX
+
+on:
+  push:
+    branches:
+      - build/tailscale-sft1200-noupx
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.25.11
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.11'
+          cache: false
+
+      - name: Clone OpenWrt Tailscale package builder
+        run: |
+          git clone --depth 1 https://github.com/lanrat/openwrt-tailscale-repo.git builder
+
+      - name: Disable UPX compression explicitly
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('builder/build.sh')
+          s = p.read_text()
+          old = '''    if command -v upx &> /dev/null; then
+                  upx --lzma --best "tailscale.${arch}.combined"
+              else
+                  echo "upx not found, skipping compression"
+              fi'''
+          if old not in s:
+              raise SystemExit('Expected UPX block not found in upstream build.sh')
+          s = s.replace(old, '    echo "UPX compression disabled for GL-SFT1200 compatibility"')
+          p.write_text(s)
+          PY
+          grep -n -A2 -B2 'UPX compression disabled' builder/build.sh
+
+      - name: Build mips_siflower package
+        env:
+          ARCH: mips_siflower
+          BRANCH: v1.96.4
+          PKG_RELEASE: '3'
+          GO_VERSION: go1.25.11
+        run: |
+          cd builder
+          ./build.sh force
+
+      - name: Verify package metadata and binary
+        run: |
+          set -euxo pipefail
+          PKG=builder/packages/19.07/tailscale_1.96.4_mips_siflower.ipk
+          test -s "$PKG"
+
+          mkdir verify
+          tar -xzf "$PKG" -C verify
+          mkdir verify/control verify/data
+          tar -xzf verify/control.tar.gz -C verify/control
+          tar -xzf verify/data.tar.gz -C verify/data
+
+          cat verify/control/control
+          grep -q '^Package: tailscale$' verify/control/control
+          grep -q '^Version: 1.96.4-3$' verify/control/control
+          grep -q '^Architecture: mips_siflower$' verify/control/control
+
+          BIN=verify/data/usr/sbin/tailscaled
+          test -x "$BIN"
+          file "$BIN"
+          SIZE=$(stat -c '%s' "$BIN")
+          echo "Uncompressed tailscaled size: $SIZE bytes"
+          test "$SIZE" -gt 20000000
+
+          # Cross-check with an independent UPX binary that this ELF is NOT packed.
+          curl -fsSL -o /tmp/upx.tar.xz https://github.com/upx/upx/releases/download/v5.2.0/upx-5.2.0-amd64_linux.tar.xz
+          tar -xJf /tmp/upx.tar.xz -C /tmp
+          UPX=/tmp/upx-5.2.0-amd64_linux/upx
+          "$UPX" -l "$BIN" > /tmp/upx-check.txt 2>&1 && {
+            cat /tmp/upx-check.txt
+            echo 'ERROR: binary is still UPX-packed' >&2
+            exit 1
+          } || true
+          cat /tmp/upx-check.txt
+          if grep -qiE 'Packed|compressed' /tmp/upx-check.txt && ! grep -qi 'NotPacked' /tmp/upx-check.txt; then
+            echo 'ERROR: UPX check is ambiguous' >&2
+            exit 1
+          fi
+
+          cp "$PKG" tailscale_1.96.4-3_mips_siflower_noupx.ipk
+          sha256sum tailscale_1.96.4-3_mips_siflower_noupx.ipk | tee tailscale_1.96.4-3_mips_siflower_noupx.ipk.sha256
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tailscale-sft1200-1.96.4-3-noupx
+          path: |
+            tailscale_1.96.4-3_mips_siflower_noupx.ipk
+            tailscale_1.96.4-3_mips_siflower_noupx.ipk.sha256
+          if-no-files-found: error
+          retention-days: 7
